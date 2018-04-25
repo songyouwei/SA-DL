@@ -22,12 +22,25 @@ def load_word_vec(word_index=None, embedding_dim=100):
     return word_vec
 
 
-def read_twitter(type='train', embedding_dim=100, max_seq_len=40, max_aspect_len=3):
-    print("preparing twitter data...")
-    fname = './datasets/acl-14-short-data/'+type+'.raw'
-    fin = open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
+def read_dataset(type='twitter', mode='train', embedding_dim=100, max_seq_len=40, max_aspect_len=3):
+    print("preparing data...")
+    fname = {
+        'twitter': {
+            'train': './datasets/acl-14-short-data/train.raw',
+            'test': './datasets/acl-14-short-data/test.raw'
+        },
+        'restaurant': {
+            'train': './datasets/semeval14/Restaurants_Train.xml.seg',
+            'test': './datasets/semeval14/Restaurants_Test_Gold.xml.seg'
+        },
+        'laptop': {
+            'train': './datasets/semeval14/Laptops_Train.xml.seg',
+            'test': './datasets/semeval14/Laptops_Test_Gold.xml.seg'
+        }
+    }
+    fin = open(fname[type][mode], 'r', encoding='utf-8', newline='\n', errors='ignore')
     lines = fin.readlines()
-    print("number of twitters:", len(lines)/3)
+    print("number of {0} {1} data: {2}".format(type, mode ,len(lines)/3))
 
     text = ''
     texts_raw = []
@@ -66,18 +79,18 @@ def read_twitter(type='train', embedding_dim=100, max_seq_len=40, max_aspect_len
     aspects_indices = pad_sequences(aspects_indices, maxlen=max_aspect_len)
     polarities_matrix = K.eval(tf.one_hot(indices=polarities, depth=3))
 
-    if type == 'test':
+    if mode == 'test':
         return texts_raw_indices, texts_left_indices, aspects_indices, texts_right_indices, polarities_matrix
 
-    embedding_matrix_file_name = str(embedding_dim)+'_twitter_embedding_matrix.dat'
+    embedding_matrix_file_name = '{0}_{1}_embedding_matrix.dat'.format(str(embedding_dim), type)
     if os.path.exists(embedding_matrix_file_name):
-        print('loading twitter embedding_matrix...')
+        print('loading embedding_matrix:', embedding_matrix_file_name)
         embedding_matrix = pickle.load(open(embedding_matrix_file_name, 'rb'))
     else:
         print('loading word vectors...')
         word_vec = load_word_vec(word_index, embedding_dim)
         embedding_matrix = np.zeros((len(word_index) + 1, embedding_dim))
-        print('building twitter embedding_matrix...')
+        print('building embedding_matrix:', embedding_matrix_file_name)
         for word, i in word_index.items():
             vec = word_vec.get(word)
             if vec is not None:
@@ -90,4 +103,4 @@ def read_twitter(type='train', embedding_dim=100, max_seq_len=40, max_aspect_len
            tokenizer
 
 if __name__ == '__main__':
-    read_twitter()
+    read_dataset()

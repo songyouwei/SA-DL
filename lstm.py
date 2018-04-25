@@ -8,7 +8,7 @@ import argparse
 import os
 from tensorflow.python.keras.callbacks import TensorBoard
 # from tensorflow.python.keras.utils import plot_model
-from utils import read_twitter
+from utils import read_dataset
 from tensorflow.python.keras import initializers, regularizers, optimizers
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 from tensorflow.python.keras.models import Model, load_model
@@ -17,6 +17,7 @@ from tensorflow.python.keras.layers import Input, Dense, Activation, LSTM, Embed
 
 class RawLSTM:
     def __init__(self):
+        self.DATASET = 'twitter'  # 'restaurant', 'laptop'
         self.POLARITIES_DIM = 3
         self.EMBEDDING_DIM = 100
         self.LEARNING_RATE = 0.01
@@ -42,7 +43,10 @@ class RawLSTM:
         self.polarities_matrix, \
         self.embedding_matrix, \
         self.tokenizer = \
-            read_twitter(embedding_dim=self.EMBEDDING_DIM, max_seq_len=self.MAX_SEQUENCE_LENGTH, max_aspect_len=self.MAX_ASPECT_LENGTH)
+            read_dataset(type=self.DATASET,
+                         mode='train',
+                         embedding_dim=self.EMBEDDING_DIM,
+                         max_seq_len=self.MAX_SEQUENCE_LENGTH, max_aspect_len=self.MAX_ASPECT_LENGTH)
 
         if os.path.exists('lstm_saved_model.h5'):
             print('loading saved model...')
@@ -68,7 +72,10 @@ class RawLSTM:
         tbCallBack = TensorBoard(log_dir='./lstm_logs', histogram_freq=0, write_graph=True, write_images=True)
 
         texts_raw_indices, texts_left_indices, aspects_indices, texts_right_indices, polarities_matrix = \
-            read_twitter(type='test', max_seq_len=self.MAX_SEQUENCE_LENGTH, max_aspect_len=self.MAX_ASPECT_LENGTH)
+            read_dataset(type=self.DATASET,
+                         mode='test',
+                         embedding_dim=self.EMBEDDING_DIM,
+                         max_seq_len=self.MAX_SEQUENCE_LENGTH, max_aspect_len=self.MAX_ASPECT_LENGTH)
 
         for i in range(1, self.ITERATION):
             print()
