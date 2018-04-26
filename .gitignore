@@ -1,4 +1,6 @@
 __pycache__/
+*.dat
+*.h5
 *logs
 glove.twitter.27B
 
