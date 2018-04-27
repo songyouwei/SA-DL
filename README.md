@@ -11,20 +11,20 @@
 * Tensorflow 1.7
 * Python 3.6
 * Pre-trained word vectors
-  * Download pre-trained Twitter word vectors [here](https://github.com/stanfordnlp/GloVe#download-pre-trained-word-vectors), use the [glove.twitter.27B.zip](http://nlp.stanford.edu/data/wordvecs/glove.twitter.27B.zip)
+  * Download pre-trained Twitter word vectors [here](https://github.com/stanfordnlp/GloVe#download-pre-trained-word-vectors), extract the [glove.twitter.27B.zip](http://nlp.stanford.edu/data/wordvecs/glove.twitter.27B.zip) to the root directory
 
-## Usage example
+## An usage example
 
 ### Training:
 
 ```sh
-python td_lstm.py
+python ram.py
 ```
 
 ### See the training process
 
 ```sh
-tensorboard --logdir=./td_lstm_logs
+tensorboard --logdir=./ram_logs
 ```
 
 
@@ -36,18 +36,6 @@ Young, Tom, et al. "Recent trends in deep learning based natural language proces
 
 
 ## Papers & Models
-
-
-### LSTM
-
-![lstm](assets/lstm.png)
-
-### TD-LSTM
-
-Tang, Duyu, et al. "Effective LSTMs for Target-Dependent Sentiment Classification." Proceedings of COLING 2016, the 26th International Conference on Computational Linguistics: Technical Papers. 2016. [[pdf]](https://arxiv.org/pdf/1512.01100)
-
-![td-lstm](assets/td-lstm.png)
-
 
 ### RAM
 Chen, Peng, et al. "Recurrent Attention Network on Memory for Aspect Sentiment Analysis." Proceedings of the 2017 Conference on Empirical Methods in Natural Language Processing. 2017. [[pdf]](http://www.aclweb.org/anthology/D17-1047)
@@ -65,6 +53,18 @@ Tang, Duyu, Bing Qin, and Ting Liu. "Aspect level sentiment classification with 
 Ma, Dehong, et al. "Interactive Attention Networks for Aspect-Level Sentiment Classification." arXiv preprint arXiv:1709.00893 (2017).
 
 ![han](assets/han.png)
+
+
+### TD-LSTM
+
+Tang, Duyu, et al. "Effective LSTMs for Target-Dependent Sentiment Classification." Proceedings of COLING 2016, the 26th International Conference on Computational Linguistics: Technical Papers. 2016. [[pdf]](https://arxiv.org/pdf/1512.01100)
+
+![td-lstm](assets/td-lstm.png)
+
+
+### LSTM
+
+![lstm](assets/lstm.png)
 
 
 ## Licence
