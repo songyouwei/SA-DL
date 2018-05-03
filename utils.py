@@ -12,7 +12,8 @@ from tensorflow.python.keras.preprocessing.text import Tokenizer
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 
 def load_word_vec(word_index=None, embedding_dim=100):
-    fname = './glove.twitter.27B/glove.twitter.27B.'+str(embedding_dim)+'d.txt'
+    fname = './glove.twitter.27B/glove.twitter.27B.'+str(embedding_dim)+'d.txt' \
+        if embedding_dim != 300 else './glove.42B.300d.txt'
     fin = open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
     word_vec = {}
     for line in fin:
