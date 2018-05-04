@@ -23,10 +23,10 @@ class TDLSTM:
     def __init__(self):
         self.DATASET = 'twitter'  # 'twitter', 'restaurant', 'laptop'
         self.POLARITIES_DIM = 3
-        self.EMBEDDING_DIM = 200
-        self.LEARNING_RATE = 0.001
+        self.EMBEDDING_DIM = 100
+        self.LEARNING_RATE = 0.01
         self.INITIALIZER = initializers.RandomUniform(minval=-0.003, maxval=0.003)
-        self.REGULARIZER = None
+        self.REGULARIZER = regularizers.l2(0.001)
         self.LSTM_PARAMS = {
             'units': 200,
             'activation': 'tanh',
@@ -41,11 +41,12 @@ class TDLSTM:
             'recurrent_dropout': 0,
         }
         self.MAX_SEQUENCE_LENGTH = 80
-        self.MAX_ASPECT_LENGTH = 2
+        self.MAX_ASPECT_LENGTH = 10
         self.BATCH_SIZE = 200
         self.EPOCHS = 100
 
-        self.texts_raw_indices, self.texts_left_indices, self.aspects_indices, self.texts_right_indices, \
+        self.texts_raw_indices, self.texts_raw_without_aspects_indices, self.texts_left_indices, self.texts_left_with_aspects_indices, \
+        self.aspects_indices, self.texts_right_indices, self.texts_right_with_aspects_indices, \
         self.polarities_matrix, \
         self.embedding_matrix, \
         self.tokenizer = \
@@ -54,19 +55,16 @@ class TDLSTM:
                          embedding_dim=self.EMBEDDING_DIM,
                          max_seq_len=self.MAX_SEQUENCE_LENGTH, max_aspect_len=self.MAX_ASPECT_LENGTH)
 
-        self.left_input = np.concatenate((self.texts_left_indices, self.aspects_indices), axis=1)
-        self.right_input = np.concatenate((self.texts_right_indices, self.aspects_indices), axis=1)
-
         if os.path.exists('td_lstm_saved_model.h5'):
             print('loading saved model...')
             self.model = load_model('td_lstm_saved_model.h5')
         else:
             print('Build model...')
-            inputs_l = Input(shape=(self.MAX_SEQUENCE_LENGTH + self.MAX_ASPECT_LENGTH,))
-            inputs_r = Input(shape=(self.MAX_SEQUENCE_LENGTH + self.MAX_ASPECT_LENGTH,))
+            inputs_l = Input(shape=(self.MAX_SEQUENCE_LENGTH,))
+            inputs_r = Input(shape=(self.MAX_SEQUENCE_LENGTH,))
             Embedding_Layer = Embedding(input_dim=len(self.tokenizer.word_index) + 1,
                           output_dim=self.EMBEDDING_DIM,
-                          input_length=self.MAX_SEQUENCE_LENGTH + self.MAX_ASPECT_LENGTH,
+                          input_length=self.MAX_SEQUENCE_LENGTH,
                           weights=[self.embedding_matrix],
                           trainable=False)
             x_l = Embedding_Layer(inputs_l)
@@ -87,19 +85,19 @@ class TDLSTM:
         def modelSave(epoch, logs):
             if (epoch + 1) % 5 == 0:
                 self.model.save('td_lstm_saved_model.h5')
+        msCallBack = LambdaCallback(on_epoch_end=modelSave)
 
-        texts_raw_indices, texts_left_indices, aspects_indices, texts_right_indices, polarities_matrix = \
+        texts_raw_indices, texts_raw_without_aspects_indices, texts_left_indices, texts_left_with_aspects_indices, \
+        aspects_indices, texts_right_indices, texts_right_with_aspects_indices, \
+        polarities_matrix = \
             read_dataset(type=self.DATASET,
                          mode='test',
                          embedding_dim=self.EMBEDDING_DIM,
                          max_seq_len=self.MAX_SEQUENCE_LENGTH, max_aspect_len=self.MAX_ASPECT_LENGTH)
 
-        left_input = np.concatenate((texts_left_indices, aspects_indices), axis=1)
-        right_input = np.concatenate((texts_right_indices, aspects_indices), axis=1)
-
-        self.model.fit([self.left_input, self.right_input], self.polarities_matrix,
-                       validation_data=([left_input, right_input], polarities_matrix),
-                       epochs=self.EPOCHS, batch_size=self.BATCH_SIZE, callbacks=[tbCallBack, LambdaCallback(on_epoch_end=modelSave)])
+        self.model.fit([self.texts_left_with_aspects_indices, self.texts_right_with_aspects_indices], self.polarities_matrix,
+                       validation_data=([texts_left_with_aspects_indices, texts_right_with_aspects_indices], polarities_matrix),
+                       epochs=self.EPOCHS, batch_size=self.BATCH_SIZE, callbacks=[tbCallBack])
 
 
 if __name__ == '__main__':

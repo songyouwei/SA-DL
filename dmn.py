@@ -12,6 +12,7 @@ from utils import read_dataset
 from custom_metrics import f1
 from attention_layer import Attention
 import numpy as np
+import tensorflow as tf
 from tensorflow.python.keras import initializers, regularizers, optimizers, backend as K
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 from tensorflow.python.keras.models import Model, load_model
@@ -30,33 +31,21 @@ class DeepMemoryNetwork:
         return memory * vv
 
     def __init__(self):
-        self.HOPS = 9
+        self.HOPS = 7
         self.SCORE_FUNCTION = 'mlp'  # scaled_dot_product / mlp (concat) / bi_linear (general dot)
-        self.DATASET = 'laptop'  # 'twitter', 'restaurant', 'laptop'
+        self.DATASET = 'twitter'  # 'twitter', 'restaurant', 'laptop'
         self.POLARITIES_DIM = 3
         self.EMBEDDING_DIM = 300
-        self.LEARNING_RATE = 0.001
-        self.INITIALIZER = initializers.RandomUniform(minval=-0.05, maxval=0.05)
+        self.LEARNING_RATE = 0.01
+        self.INITIALIZER = initializers.RandomUniform(minval=-0.003, maxval=0.003)
         self.REGULARIZER = regularizers.l2(0.001)
-        self.LSTM_PARAMS = {
-            'units': 200,
-            'activation': 'tanh',
-            'recurrent_activation': 'sigmoid',
-            'kernel_initializer': self.INITIALIZER,
-            'recurrent_initializer': self.INITIALIZER,
-            'bias_initializer': self.INITIALIZER,
-            'kernel_regularizer': self.REGULARIZER,
-            'recurrent_regularizer': self.REGULARIZER,
-            'bias_regularizer': self.REGULARIZER,
-            'dropout': 0,
-            'recurrent_dropout': 0,
-        }
-        self.MAX_SEQUENCE_LENGTH = 40
-        self.MAX_ASPECT_LENGTH = 2
+        self.MAX_SEQUENCE_LENGTH = 80
+        self.MAX_ASPECT_LENGTH = 10
         self.BATCH_SIZE = 200
         self.EPOCHS = 100
 
-        self.texts_raw_indices, self.texts_left_indices, self.aspects_indices, self.texts_right_indices, \
+        self.texts_raw_indices, self.texts_raw_without_aspects_indices, self.texts_left_indices, self.texts_left_with_aspects_indices, \
+        self.aspects_indices, self.texts_right_indices, self.texts_right_with_aspects_indices, \
         self.polarities_matrix, \
         self.embedding_matrix, \
         self.tokenizer = \
@@ -70,11 +59,12 @@ class DeepMemoryNetwork:
             self.model = load_model('dmn_saved_model.h5')
         else:
             print('Build model...')
-            inputs_sentence = Input(shape=(self.MAX_SEQUENCE_LENGTH*2,), name='inputs_sentence')
+            inputs_sentence = Input(shape=(self.MAX_SEQUENCE_LENGTH,), name='inputs_sentence')
             inputs_aspect = Input(shape=(self.MAX_ASPECT_LENGTH,), name='inputs_aspect')
+            nonzero_count = Lambda(lambda xin: tf.count_nonzero(xin, dtype=tf.float32))(inputs_aspect)
             memory = Embedding(input_dim=len(self.tokenizer.word_index) + 1,
                           output_dim=self.EMBEDDING_DIM,
-                          input_length=self.MAX_SEQUENCE_LENGTH*2,
+                          input_length=self.MAX_SEQUENCE_LENGTH,
                           weights=[self.embedding_matrix],
                           trainable=False, name='sentence_embedding')(inputs_sentence)
             memory = Lambda(self.locationed_memory, name='locationed_memory')(memory)
@@ -83,7 +73,7 @@ class DeepMemoryNetwork:
                              input_length=self.MAX_ASPECT_LENGTH,
                              weights=[self.embedding_matrix],
                              trainable=False, name='aspect_embedding')(inputs_aspect)
-            x = Lambda(lambda xin: K.mean(xin, axis=1), name='aspect_mean')(aspect)
+            x = Lambda(lambda xin: K.sum(xin[0], axis=1) / xin[1], name='aspect_mean')([aspect, nonzero_count])
             shared_attention = Attention(score_function=self.SCORE_FUNCTION,
                                          initializer=self.INITIALIZER, regularizer=self.REGULARIZER,
                                          name='shared_attention')
@@ -103,17 +93,19 @@ class DeepMemoryNetwork:
         def modelSave(epoch, logs):
             if (epoch+1) % 5 == 0:
                 self.model.save('dmn_saved_model.h5')
+        msCallBack = LambdaCallback(on_epoch_end=modelSave)
 
-        texts_raw_indices, texts_left_indices, aspects_indices, texts_right_indices, polarities_matrix = \
+        texts_raw_indices, texts_raw_without_aspects_indices, texts_left_indices, texts_left_with_aspects_indices, \
+        aspects_indices, texts_right_indices, texts_right_with_aspects_indices, \
+        polarities_matrix = \
             read_dataset(type=self.DATASET,
                          mode='test',
                          embedding_dim=self.EMBEDDING_DIM,
                          max_seq_len=self.MAX_SEQUENCE_LENGTH, max_aspect_len=self.MAX_ASPECT_LENGTH)
 
-        self.model.fit([np.concatenate((self.texts_left_indices, self.texts_right_indices), axis=1), self.aspects_indices], self.polarities_matrix,
-                       validation_data=([np.concatenate((texts_left_indices, texts_right_indices), axis=1), aspects_indices], polarities_matrix),
-                       epochs=self.EPOCHS, batch_size=self.BATCH_SIZE,
-                       callbacks=[tbCallBack, LambdaCallback(on_epoch_end=modelSave)])
+        self.model.fit([self.texts_raw_without_aspects_indices, self.aspects_indices], self.polarities_matrix,
+                       validation_data=([texts_raw_without_aspects_indices, aspects_indices], polarities_matrix),
+                       epochs=self.EPOCHS, batch_size=self.BATCH_SIZE, callbacks=[tbCallBack])
 
 
 if __name__ == '__main__':

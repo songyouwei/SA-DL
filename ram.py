@@ -11,6 +11,7 @@ from tensorflow.python.keras.callbacks import TensorBoard, LambdaCallback
 from utils import read_dataset
 from custom_metrics import f1
 from attention_layer import Attention
+import tensorflow as tf
 from tensorflow.python.keras import initializers, regularizers, optimizers, backend as K
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 from tensorflow.python.keras.models import Model, load_model
@@ -40,12 +41,13 @@ class RecurrentAttentionMemory:
             'dropout': 0,
             'recurrent_dropout': 0,
         }
-        self.MAX_SEQUENCE_LENGTH = 40
-        self.MAX_ASPECT_LENGTH = 2
+        self.MAX_SEQUENCE_LENGTH = 80
+        self.MAX_ASPECT_LENGTH = 10
         self.BATCH_SIZE = 200
         self.EPOCHS = 100
 
-        self.texts_raw_indices, self.texts_left_indices, self.aspects_indices, self.texts_right_indices, \
+        self.texts_raw_indices, self.texts_raw_without_aspects_indices, self.texts_left_indices, self.texts_left_with_aspects_indices, \
+        self.aspects_indices, self.texts_right_indices, self.texts_right_with_aspects_indices, \
         self.polarities_matrix, \
         self.embedding_matrix, \
         self.tokenizer = \
@@ -59,11 +61,12 @@ class RecurrentAttentionMemory:
             self.model = load_model('ram_saved_model.h5')
         else:
             print('Build model...')
-            inputs_sentence = Input(shape=(self.MAX_SEQUENCE_LENGTH*2+self.MAX_ASPECT_LENGTH,), name='inputs_sentence')
+            inputs_sentence = Input(shape=(self.MAX_SEQUENCE_LENGTH,), name='inputs_sentence')
             inputs_aspect = Input(shape=(self.MAX_ASPECT_LENGTH,), name='inputs_aspect')
+            nonzero_count = Lambda(lambda xin: tf.count_nonzero(xin, dtype=tf.float32))(inputs_aspect)
             sentence = Embedding(input_dim=len(self.tokenizer.word_index) + 1,
                           output_dim=self.EMBEDDING_DIM,
-                          input_length=self.MAX_SEQUENCE_LENGTH*2+self.MAX_ASPECT_LENGTH,
+                          input_length=self.MAX_SEQUENCE_LENGTH,
                           weights=[self.embedding_matrix],
                           trainable=False, name='sentence_embedding')(inputs_sentence)
             aspect = Embedding(input_dim=len(self.tokenizer.word_index) + 1,
@@ -73,7 +76,7 @@ class RecurrentAttentionMemory:
                              trainable=False, name='aspect_embedding')(inputs_aspect)
             memory = Bidirectional(LSTM(return_sequences=True, **self.LSTM_PARAMS), name='memory')(sentence)
             aspect = Bidirectional(LSTM(return_sequences=True, **self.LSTM_PARAMS), name='aspect')(aspect)
-            x = Lambda(lambda xin: K.mean(xin, axis=1), name='aspect_mean')(aspect)
+            x = Lambda(lambda xin: K.sum(xin[0], axis=1) / xin[1], name='aspect_mean')([aspect, nonzero_count])
             shared_attention = Attention(score_function=self.SCORE_FUNCTION,
                                          initializer=self.INITIALIZER, regularizer=self.REGULARIZER,
                                          name='shared_attention')
@@ -93,8 +96,11 @@ class RecurrentAttentionMemory:
         def modelSave(epoch, logs):
             if (epoch + 1) % 5 == 0:
                 self.model.save('ram_saved_model.h5')
+        msCallBack = LambdaCallback(on_epoch_end=modelSave)
 
-        texts_raw_indices, texts_left_indices, aspects_indices, texts_right_indices, polarities_matrix = \
+        texts_raw_indices, texts_raw_without_aspects_indices, texts_left_indices, texts_left_with_aspects_indices, \
+        aspects_indices, texts_right_indices, texts_right_with_aspects_indices, \
+        polarities_matrix = \
             read_dataset(type=self.DATASET,
                          mode='test',
                          embedding_dim=self.EMBEDDING_DIM,
@@ -102,8 +108,7 @@ class RecurrentAttentionMemory:
 
         self.model.fit([self.texts_raw_indices, self.aspects_indices], self.polarities_matrix,
                        validation_data=([texts_raw_indices, aspects_indices], polarities_matrix),
-                       epochs=self.EPOCHS, batch_size=self.BATCH_SIZE,
-                       callbacks=[tbCallBack, LambdaCallback(on_epoch_end=modelSave)])
+                       epochs=self.EPOCHS, batch_size=self.BATCH_SIZE, callbacks=[tbCallBack])
 
 
 if __name__ == '__main__':

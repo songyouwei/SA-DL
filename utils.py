@@ -23,7 +23,7 @@ def load_word_vec(word_index=None, embedding_dim=100):
     return word_vec
 
 
-def read_dataset(type='twitter', mode='train', embedding_dim=100, max_seq_len=40, max_aspect_len=3):
+def read_dataset(type='twitter', mode='train', embedding_dim=100, max_seq_len=40, max_aspect_len=3, polarities_dim=3):
     print("preparing data...")
     fname = {
         'twitter': {
@@ -45,8 +45,11 @@ def read_dataset(type='twitter', mode='train', embedding_dim=100, max_seq_len=40
 
     text = ''
     texts_raw = []
+    texts_raw_without_aspects = []
     texts_left = []
+    texts_left_with_aspects = []
     texts_right = []
+    texts_right_with_aspects = []
     aspects = []
     polarities = []
 
@@ -59,8 +62,11 @@ def read_dataset(type='twitter', mode='train', embedding_dim=100, max_seq_len=40
         text += text_raw
 
         texts_raw.append(text_raw)
+        texts_raw_without_aspects.append(text_left + " " + text_right)
         texts_left.append(text_left)
+        texts_left_with_aspects.append(text_left + " " + aspect)
         texts_right.append(text_right)
+        texts_right_with_aspects.append(aspect + " " + text_right)
         aspects.append(aspect)
         polarities.append(int(polarity))
 
@@ -71,17 +77,24 @@ def read_dataset(type='twitter', mode='train', embedding_dim=100, max_seq_len=40
     word_index = tokenizer.word_index
 
     texts_raw_indices = tokenizer.texts_to_sequences(texts_raw)
-    texts_raw_indices = pad_sequences(texts_raw_indices, maxlen=max_seq_len*2+max_aspect_len)
+    texts_raw_indices = pad_sequences(texts_raw_indices, maxlen=max_seq_len)
+    texts_raw_without_aspects_indices = tokenizer.texts_to_sequences(texts_raw_without_aspects)
+    texts_raw_without_aspects_indices = pad_sequences(texts_raw_without_aspects_indices, maxlen=max_seq_len)
     texts_left_indices = tokenizer.texts_to_sequences(texts_left)
     texts_left_indices = pad_sequences(texts_left_indices, maxlen=max_seq_len)
+    texts_left_with_aspects_indices = tokenizer.texts_to_sequences(texts_left_with_aspects)
+    texts_left_with_aspects_indices = pad_sequences(texts_left_with_aspects_indices, maxlen=max_seq_len)
     texts_right_indices = tokenizer.texts_to_sequences(texts_right)
-    texts_right_indices = pad_sequences(texts_right_indices, maxlen=max_seq_len, padding='post', truncating='post') # 方向不同
+    texts_right_indices = pad_sequences(texts_right_indices, maxlen=max_seq_len, padding='post', truncating='post')
+    texts_right_with_aspects_indices = tokenizer.texts_to_sequences(texts_right_with_aspects)
+    texts_right_with_aspects_indices = pad_sequences(texts_right_with_aspects_indices, maxlen=max_seq_len, padding='post', truncating='post')
     aspects_indices = tokenizer.texts_to_sequences(aspects)
     aspects_indices = pad_sequences(aspects_indices, maxlen=max_aspect_len)
-    polarities_matrix = K.eval(tf.one_hot(indices=polarities, depth=3))
+    polarities_matrix = K.eval(tf.one_hot(indices=polarities, depth=polarities_dim))
 
     if mode == 'test':
-        return texts_raw_indices, texts_left_indices, aspects_indices, texts_right_indices, polarities_matrix
+        return texts_raw_indices, texts_raw_without_aspects_indices, texts_left_indices, texts_left_with_aspects_indices, \
+               aspects_indices, texts_right_indices, texts_right_with_aspects_indices, polarities_matrix
 
     embedding_matrix_file_name = '{0}_{1}_embedding_matrix.dat'.format(str(embedding_dim), type)
     if os.path.exists(embedding_matrix_file_name):
@@ -99,7 +112,9 @@ def read_dataset(type='twitter', mode='train', embedding_dim=100, max_seq_len=40
                 embedding_matrix[i] = vec
         pickle.dump(embedding_matrix, open(embedding_matrix_file_name, 'wb'))
 
-    return texts_raw_indices, texts_left_indices, aspects_indices, texts_right_indices, polarities_matrix, \
+    return texts_raw_indices, texts_raw_without_aspects_indices, texts_left_indices, texts_left_with_aspects_indices, \
+           aspects_indices, texts_right_indices, texts_right_with_aspects_indices, \
+           polarities_matrix, \
            embedding_matrix, \
            tokenizer
 
