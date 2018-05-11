@@ -65,12 +65,14 @@ class DeepMemoryNetwork:
             memory = Embedding(input_dim=len(self.tokenizer.word_index) + 1,
                           output_dim=self.EMBEDDING_DIM,
                           input_length=self.MAX_SEQUENCE_LENGTH,
+                          mask_zero=True,
                           weights=[self.embedding_matrix],
                           trainable=False, name='sentence_embedding')(inputs_sentence)
             memory = Lambda(self.locationed_memory, name='locationed_memory')(memory)
             aspect = Embedding(input_dim=len(self.tokenizer.word_index) + 1,
                              output_dim=self.EMBEDDING_DIM,
                              input_length=self.MAX_ASPECT_LENGTH,
+                             mask_zero=True,
                              weights=[self.embedding_matrix],
                              trainable=False, name='aspect_embedding')(inputs_aspect)
             x = Lambda(lambda xin: K.sum(xin[0], axis=1) / xin[1], name='aspect_mean')([aspect, nonzero_count])

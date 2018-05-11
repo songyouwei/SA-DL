@@ -1,3 +1,7 @@
+# IMPORTANT
+
+**This repo is no longer maintained! Please go to: <https://github.com/songyouwei/ABSA-PyTorch>**
+
 # SA-DL
 
 > Sentiment Analysis with Deep Learning models. Implemented with Tensorflow and Keras.

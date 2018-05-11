@@ -67,11 +67,13 @@ class RecurrentAttentionMemory:
             sentence = Embedding(input_dim=len(self.tokenizer.word_index) + 1,
                           output_dim=self.EMBEDDING_DIM,
                           input_length=self.MAX_SEQUENCE_LENGTH,
+                          mask_zero=True,
                           weights=[self.embedding_matrix],
                           trainable=False, name='sentence_embedding')(inputs_sentence)
             aspect = Embedding(input_dim=len(self.tokenizer.word_index) + 1,
                              output_dim=self.EMBEDDING_DIM,
                              input_length=self.MAX_ASPECT_LENGTH,
+                             mask_zero=True,
                              weights=[self.embedding_matrix],
                              trainable=False, name='aspect_embedding')(inputs_aspect)
             memory = Bidirectional(LSTM(return_sequences=True, **self.LSTM_PARAMS), name='memory')(sentence)

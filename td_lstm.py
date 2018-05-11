@@ -40,6 +40,12 @@ class TDLSTM:
             'dropout': 0,
             'recurrent_dropout': 0,
         }
+        self.DENSE_PARAMS = {
+            'kernel_initializer': self.INITIALIZER,
+            'bias_initializer': self.INITIALIZER,
+            'kernel_regularizer': self.REGULARIZER,
+            'bias_regularizer': self.REGULARIZER,
+        }
         self.MAX_SEQUENCE_LENGTH = 80
         self.MAX_ASPECT_LENGTH = 10
         self.BATCH_SIZE = 200
@@ -65,6 +71,7 @@ class TDLSTM:
             Embedding_Layer = Embedding(input_dim=len(self.tokenizer.word_index) + 1,
                           output_dim=self.EMBEDDING_DIM,
                           input_length=self.MAX_SEQUENCE_LENGTH,
+                          mask_zero=True,
                           weights=[self.embedding_matrix],
                           trainable=False)
             x_l = Embedding_Layer(inputs_l)

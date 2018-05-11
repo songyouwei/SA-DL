@@ -47,7 +47,7 @@ class Attention(Layer):
         # k: (?, K_LEN, EMBED_DIM,)
         # q: (?, Q_LEN, EMBED_DIM,)
         # score: (?, Q_LEN, K_LEN,)
-        if self.score_function == 'scared_dot_product':
+        if self.score_function == 'scaled_dot_product':
             kt = K.permute_dimensions(k, (0, 2, 1))
             qkt = K.batch_dot(q, kt)
             score = qkt / self.EMBED_DIM

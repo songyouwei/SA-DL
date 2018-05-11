@@ -41,6 +41,7 @@ def read_dataset(type='twitter', mode='train', embedding_dim=100, max_seq_len=40
     }
     fin = open(fname[type][mode], 'r', encoding='utf-8', newline='\n', errors='ignore')
     lines = fin.readlines()
+    fin.close()
     print("number of {0} {1} data: {2}".format(type, mode ,len(lines)/3))
 
     text = ''
